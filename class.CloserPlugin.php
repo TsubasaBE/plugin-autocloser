@@ -52,6 +52,9 @@ class CloserPlugin extends Plugin {
      * @see Plugin::bootstrap()
      */
     public function bootstrap() {
+        // Keep the instance information in the object so it can be reused inside connected signals
+        $this->plugininstance();
+
         // Listen for cron Signal, which only happens at end of class.cron.php:
         Signal::connect('cron', function ($ignored, $data) {
 
@@ -70,12 +73,29 @@ class CloserPlugin extends Plugin {
     }
 
     /**
+     * Checks if osticket supports instances
+     */
+	function plugininstance() {
+        $this->instance = new stdClass();
+        if (method_exists($this,'getInstances')) {
+            $ins = $this->getInstances($this->id)->key['plugin_id'];
+            $this->instance->plugin = "plugin.".$this->id.".instance.".$ins;
+            $this->instance->backend = ".p".$this->id."i".$ins;
+            $this->instance->staff = ".p".$this->id."i".$ins;
+            $this->instance->ins = $this->getInstances()->first();
+        } else {
+            $this->instance->plugin = "plugin.".$this->id;
+        }
+    }
+
+    /**
      * Closes old tickets.. with extreme prejudice.. or, regular prejudice..
      * whatever. = Welcome to the 23rd Century. The perfect world of total
      * pleasure. ... there's just one catch.
      */
     private function logans_run_mode() {
-        $config = $this->getConfig();
+        // Fetch the config from the parent Plugin class
+		$config = $this->getConfig($this->instance->ins);
         if ($this->is_time_to_run($config)) {
             // Use the number of config groups to run the closer as many times as is needed.
             foreach (range(1, CloserPluginConfig::NUMBER_OF_SETTINGS) as $group_id) {
